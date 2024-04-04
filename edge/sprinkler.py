@@ -1,8 +1,9 @@
 import datetime
 
+import dotenv
 import zmq
 import time
-
+dotenv.load_dotenv()
 
 def generate_response(content):
     return {
