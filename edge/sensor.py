@@ -6,16 +6,18 @@ import threading
 import time
 import random
 
+
+def generate_response(content):
+    return {
+        'content': content,
+        'timestamp': datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    }
+
 context = zmq.Context()
 
 # Conectar con el servidor Fog
 fogLayer = context.socket(zmq.PUSH)
-fogLayer.connect("tcp://localhost:5555")
-
-# Conectar con el aspersor
-sprinklerDevice = context.socket(zmq.REQ)
-sprinklerDevice.connect("tcp://localhost:5556")
-
+fogLayer.bind("tcp://*:5555")
 
 class Sensor:
     timesToSleep = {
@@ -68,30 +70,26 @@ class Sensor:
                                                            [self.out_of_range_probability for _ in range(11, 15, 1)] +
                                                            [self.wrong_probability for _ in range(-10, 0, 1)])
 
-
-    def generateResponse(self, content):
-        return {
-            'con'
-        }
-
     def start(self):
+
+
         while True:
             time.sleep(self.timesToSleep[self.type])
             metric = \
-            random.choices(self.sensorValues[self.type]['values'], self.sensorValues[self.type]['probability'])[0]
-            print(metric)
+                random.choices(self.sensorValues[self.type]['values'], self.sensorValues[self.type]['probability'])[0]
             # Generar y Enviar a Fog computing
-            fogLayer.send_json()
+            fogLayer.send_json(generate_response(metric))
 
             if self.type == "smoke" and isinstance(metric, bool):
                 if metric:
-                    sprinklerDevice.send_json()
-            """
-                Si detecta una señal de humo True: 
-                    envia un mensaje al aspersor
-                    Mensaje de alerta a la nube
-                    Genera sistema de calidad
-            """
+                    sprinkContext = zmq.Context()
+                    # Conectar con el aspersor
+                    sprinklerDevice = sprinkContext.socket(zmq.REQ)
+                    sprinklerDevice.connect("tcp://localhost:5556")
+                    sprinklerDevice.send_json(generate_response(metric))
+                    sprinklerDevice.recv()
+                    sprinklerDevice.close()
+            # Falta el sistema de calidad
 
 
 if len(sys.argv) != 3 or sys.argv[1] not in ["smoke", "temperature", "humidity"]:
