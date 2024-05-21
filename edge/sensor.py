@@ -24,11 +24,16 @@ sprinkContext = zmq.Context()
 sprinklerDevice = sprinkContext.socket(zmq.REQ)
 sprinklerDevice.connect(f"tcp://{os.getenv('SPRINKLER_IP')}:5556")
 
+# Conectar con el sistema de calidad
+qualityContext = zmq.Context()
+qualitySystem = qualityContext.socket(zmq.REQ)
+qualitySystem.connect(f"tcp://{os.getenv('QUALITY_SYSTEM_IP')}:5557")
+
 lock = threading.Lock()
 
 
 class Sensor:
-    timesToSleep = {
+    timesToSleep = { 
         'smoke': 3,
         'temperature': 6,
         'humidity': 5
@@ -68,6 +73,7 @@ class Sensor:
         self.correct_probability = data['probabilities']['correct']
         self.out_of_range_probability = data['probabilities']['out_of_range']
         self.wrong_probability = data['probabilities']['wrong']
+   
 
         context = zmq.Context()
 
@@ -96,9 +102,11 @@ class Sensor:
             time.sleep(self.timesToSleep[self.type])
             metric = \
                 random.choices(self.sensorValues[self.type]['values'], self.sensorValues[self.type]['probability'])[0]
+            
             # Generar y Enviar a Fog computing
             self.fogLayer.send_json(generate_response(metric, self.type))
             print("Paquetes envíados a Fog Layer")
+
             if self.type == "smoke" and isinstance(metric, bool):
                 if metric:
                     with mutex:
@@ -108,9 +116,15 @@ class Sensor:
                     sprinklerDevice.send_json(generate_response(metric, self.type))
                     sprinklerDevice.recv()
                     mutex.release()
-            # Falta el sistema de calidad
+                    
+                    mutex.acquire()
+                    qualitySystem.send_json(generate_response("Smoke detected", self.type))
+                    qualitySystem.recv()
+                    mutex.release()
 
 
+
+                
 if len(sys.argv) != 3 or sys.argv[1] not in ["smoke", "temperature", "humidity"]:
     print("Ups, los argumentos estan incorrectos")
     print("Recuerde que: python3 sensor.py <tipo> <archivo>")
