@@ -15,7 +15,7 @@ Build steps:
    - sudo make -j4 install
 
 2. Build cppzmq via cmake. This does an out of source build and installs the build files
-   - git clone https://github.com/zeromq/cppzmq/tree/master
+   - git clone https://github.com/zeromq/cppzmq.git
    - cd cppzmq
    - mkdir build
    - cd build
@@ -65,7 +65,7 @@ Importante tener el .env en la carpeta build
 
 ## Instalacion de RapidJSON
 
-1. For install Dotenv
+1. For install RapidJSON
    - git clone https://github.com/Tencent/rapidjson/tree/master
    - cd rapidjson
    - mkdir -p build
