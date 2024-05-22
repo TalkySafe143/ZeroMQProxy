@@ -5,12 +5,15 @@ const zmq = require("zeromq");
     cloudConnection.connect("tcp://localhost:5560");
         setInterval( async () => {
             await cloudConnection.send(JSON.stringify({
-                "hola": "como estas",
-                "pirujo": "carechimba"
+                "type": "humidity",
+                "data": {
+                    "average": Math.random(),
+                    "timestamp": Date.now()
+                }
             }));
             const [result] = await cloudConnection.receive();
 
             console.log(result.toString())
-        }, 3000)
+        }, 100)
     
 })()

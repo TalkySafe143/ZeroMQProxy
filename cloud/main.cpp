@@ -1,19 +1,26 @@
 #include <iostream>
 #include <zmq.hpp>
 #include <dotenv.h>
-#include <thread>
-#include <future>
 #include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <ctime>
+#include <chrono>
 
 using namespace std;
 using namespace zmq;
 using namespace rapidjson;
 
-void MessageToQualitySystem() {
+vector<double> avgs;
+
+void WriteMessageLog(string &line) {
+    ofstream file("../storage.txt", ios::app);
+    if (!file) return;
+    file << line << "\n";
+    file.close();
+}
+
+void MessageToQualitySystem(double value) {
     // Connecting socket
     context_t ctx;
     socket_t quality(ctx, socket_type::req);
@@ -21,8 +28,6 @@ void MessageToQualitySystem() {
     address += getenv("SCCLOUD_IP"); address += ":5559";
     quality.connect(address);
 
-    // Sending message
-    //Document json;
     time_t now = time(0);
 
     StringBuffer sb;
@@ -30,6 +35,7 @@ void MessageToQualitySystem() {
 
     writer.StartObject();
     writer.Key("content"); writer.String("Humidity alert");
+    writer.Key("value"); writer.Double(value);
     writer.Key("timestamp"); writer.String(string(ctime(&now)).c_str());
     writer.EndObject();
 
@@ -41,6 +47,22 @@ void MessageToQualitySystem() {
     quality.close();
 }
 
+void EvalAverage(double average) {
+    avgs.push_back(average);
+    if ((int) avgs.size() == 4) {
+        double sum = 0;
+        while ((int) avgs.size()) {
+            sum += avgs.back();
+            avgs.pop_back();
+        }
+        double calc = (sum/4)*100;
+        if (calc < 70 || calc > 100) {
+            MessageToQualitySystem(calc);
+        }
+    }
+}
+
+
 void StoreAlerts() {
     context_t ctx;
     socket_t writerSocket(ctx, socket_type::rep);
@@ -50,17 +72,21 @@ void StoreAlerts() {
     while (1) {
         message_t message;
         writerSocket.recv(message);
-        cout << message.to_string() << endl;
+        chrono::milliseconds ms = chrono::duration_cast< chrono::milliseconds >(
+                chrono::system_clock::now().time_since_epoch()
+                );
+        cout << ms.count() << endl;
+        string msgStr = message.to_string();
+        cout << msgStr << endl;
         Document json;
         bool ok = true;
         if (json.Parse(message.to_string().c_str()).HasParseError()) {
             cout << "El JSON esta mal formado!\n";
             ok = false;
         } else {
-            cout << json["hola"].GetString() << endl;
-            cout << json["pirujo"].GetString() << endl;
+            WriteMessageLog(msgStr);
         }
-        if (ok && json["pirujo"] == "carechimba") MessageToQualitySystem();
+        if (ok && json["type"] == "humidity") EvalAverage(json["data"]["average"].GetDouble());
         writerSocket.send(str_buffer("ok"));
     }
 }
