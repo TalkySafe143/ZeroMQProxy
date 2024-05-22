@@ -22,6 +22,7 @@ Build steps:
    - cmake ..
    - sudo make -j4 install
 
+** Creo que este 3er paso no es necesario **
 3. Build cppzmq via [vcpkg](https://github.com/Microsoft/vcpkg/). This does an out of source build and installs the build files
    - git clone https://github.com/Microsoft/vcpkg.git
    - cd vcpkg
