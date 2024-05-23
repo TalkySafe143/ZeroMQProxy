@@ -86,7 +86,7 @@ void StoreAlerts() {
         } else {
             WriteMessageLog(msgStr);
         }
-        if (ok && json["type"] == "humidity") EvalAverage(json["data"]["average"].GetDouble());
+        if (ok && json["type"] == "Humidity") EvalAverage(json["data"]["average"].GetDouble());
         writerSocket.send(str_buffer("ok"));
     }
 }

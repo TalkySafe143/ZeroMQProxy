@@ -1,13 +1,13 @@
 const zmq = require("zeromq");
 const config = require("./config");
 require("dotenv").config();
-
+const Mutex = require("async-mutex").Mutex
 let humidityData = [];
 let temperatureData = []
-
+const mutex = new Mutex();
 // Calcular humedad diaria promedio
 const calculateHumidity = () => {
-    if (humidityData.length != 10) return -1;
+    if (humidityData.length != 10) return { average: -1};
     const totalHumidity = humidityData.reduce((acc, reading) => acc + reading.value, 0);
     const averageHumidity = totalHumidity / humidityData.length;
 
@@ -16,8 +16,8 @@ const calculateHumidity = () => {
 };
 
 const calculateTemperature = () => {
-    if (temperatureData.length != 10) return -1;
-    const totalTemperature = temperatureData.reduce((acc, reading) => acc + reading.value, 0);
+    if (temperatureData.length != 10) return { average: -1};
+    const totalTemperature = temperatureData.reduce((acc, reading) => acc + reading.data, 0);
     const averageTemperature = totalTemperature / temperatureData.length;
 
     console.log(`Promedio calculado de temperatura: ${averageTemperature}`);
@@ -31,15 +31,17 @@ const calculateTemperature = () => {
 
 // Enviar alertas
 const sendAlert = async (alertMessage, timestamp) => {
-    const alertSocket = new zmq.Request();
+    const release = await mutex.acquire()
+    const alertSocket = new zmq.Request;
     await alertSocket.connect(`tcp://${config.alertSystem.ip}:${config.alertSystem.port}`);
     await alertSocket.send(JSON.stringify({ alert: alertMessage, timestamp }));
     const [reply] = await alertSocket.receive();
     console.log("Respuesta de alerta:", reply.toString());
+    release()
 };
 
 (async function () {
-    const sock = new zmq.Reply();
+    const sock = new zmq.Reply;
 
     // Vincular la capa fog para escuchar los mensajes entrantes del proxy
     await sock.bind(`tcp://*:${config.fogLayer.port}`);
@@ -65,7 +67,7 @@ const sendAlert = async (alertMessage, timestamp) => {
                 await sendAlert(`Temperatura fuera del rango: ${temperatureAverage.average}`, timestamp);
             }
 
-            if (sensorType !== "Humidity") {
+            if (sensorType == "Humidity") {
                 await sock.send(JSON.stringify({
                     sensorType,
                     data: humidityAverage.average,
