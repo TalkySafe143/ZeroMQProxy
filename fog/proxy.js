@@ -1,17 +1,25 @@
 const zmq = require("zeromq");
 const config = require("./config");
 require("dotenv").config();
-const Mutex = require("async-mutex").Mutex
+const Mutex = require("async-mutex").Mutex;
 const mutex = new Mutex();
 
-
-const fogSocket = new zmq.Request;
+const fogSocket = new zmq.Request();
 fogSocket.connect(`tcp://${config.fogLayer.ip}:${config.fogLayer.port}`);
 
-const cloudSocket = new zmq.Request;
+const cloudSocket = new zmq.Request();
 cloudSocket.connect(`tcp://${config.cloudLayer.ip}:${config.cloudLayer.port}`);
 
+const healtSocket = new zmq.Reply();
+healtSocket.connect(`tcp://${config.healt_check.ip}:${config.healt_check.port}`);
 
+(async function () {
+    for await (const [msg] of healtSocket) {
+        console.log("Recibida solicitud de health check.");
+        await healtSocket.send("ok");
+        console.log("Respuesta de la capa de salud: ok");
+    }
+})();
 
 // Validar datos de sensores
 const validateSensorData = (sensorType, data) => {
@@ -34,26 +42,15 @@ const validateSensorData = (sensorType, data) => {
 // Recibir mensajes de un sensor
 const recibeMessage = async (connection, sensorName) => {
     for await (const [msg] of connection) {
-        console.log(`Recibido un mensaje de ${sensorName}: ${msg.toString()}`)
+        console.log(`Recibido un mensaje de ${sensorName}: ${msg.toString()}`);
+
         try {
-
-            //verificar si el mensaje es healtcheck o de los sensores
-
-            if(message.content==='healt'){
-                await connection.send('ok');
-                console.log('Respuesta health check');
-                continue;
-            }
             const message = JSON.parse(msg.toString());
             const { content, timestamp } = message;
             const data = content;
             if (validateSensorData(sensorName, data)) {
-                //console.log(`Datos válidos de ${sensorName} recibidos a las ${timestamp}: ${data}`);
-                
-                // Enviar datos a la capa Fog
                 let fogResend = null;
                 if (sensorName == "Humidity" || sensorName == "Temperature") {
-
                     const release = await mutex.acquire();
                     await fogSocket.send(JSON.stringify({ 
                         sensorType: sensorName, 
@@ -66,10 +63,8 @@ const recibeMessage = async (connection, sensorName) => {
                     release();
                 }
 
-                
                 if (fogResend && fogResend.data != -1) {
-                    const release = await mutex.acquire()
-
+                    const release = await mutex.acquire();
                     let sendToCloud = {
                         type: sensorName,
                         data: {
@@ -84,42 +79,30 @@ const recibeMessage = async (connection, sensorName) => {
                     await cloudSocket.send(JSON.stringify(sendToCloud));
                     const [cloudReply] = await cloudSocket.receive();
                     console.log("Respuesta de la capa Cloud:", cloudReply.toString());
-                    release()
+                    release();
                 }
-
-                // Ok to sensor
-                //await connection.send(JSON.stringify({ status: "ok", data: message }));
             } else {
                 console.log(`Datos inválidos de ${sensorName} recibidos a las ${timestamp}: ${data}`);
-                //await connection.send(JSON.stringify({ status: "error", error: "Datos inválidos" }));
             }
         } catch (error) {
             console.error("Error procesando el mensaje:", error);
-            //await connection.send(JSON.stringify({ status: "error", error: "Error procesando el mensaje" }));
         }
     }
 };
 
 (async function () {
-    // Configurar conexiones con los sensores
-    const smokeSensorConnection = new zmq.Pull;
+    const smokeSensorConnection = new zmq.Pull();
     smokeSensorConnection.connect(`tcp://${config.smokeSensor.ip}:${config.smokeSensor.port}`);
     console.log("Proxy conectado al puerto " + config.smokeSensor.port);
     recibeMessage(smokeSensorConnection, 'Smoke');
 
-    const temperatureSensorConnection = new zmq.Pull;
+    const temperatureSensorConnection = new zmq.Pull();
     temperatureSensorConnection.connect(`tcp://${config.temperatureSensor.ip}:${config.temperatureSensor.port}`);
     console.log("Proxy conectado al puerto " + config.temperatureSensor.port);
     recibeMessage(temperatureSensorConnection, 'Temperature');
 
-    const humiditySensorConnection = new zmq.Pull;
+    const humiditySensorConnection = new zmq.Pull();
     humiditySensorConnection.connect(`tcp://${config.humiditySensor.ip}:${config.humiditySensor.port}`);
     console.log("Proxy conectado al puerto " + config.humiditySensor.port);
     recibeMessage(humiditySensorConnection, 'Humidity');
-    
-    const healtcheckConnection = new zmq.Pull();
-    healtcheckConnection.connect(`tcp://${config.healt_check.ip}:${config.healt_check.port}`);
-    console.log("Proxy conectado al puerto " + config.healt_check.port);
-    recibeMessage(healtcheckConnection, 'Humidity');
-    
 })();
