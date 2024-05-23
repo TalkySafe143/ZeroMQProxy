@@ -18,4 +18,4 @@ qualitySystem.bind("tcp://*:5559")
 while True:
     alert = qualitySystem.recv()
     qualitySystem.send_json(generate_response("ok"))
-    print("SISTEMA DE CALIDAD FOG: ¡Se recibió una alerta de humo!")
+    print("SISTEMA DE CALIDAD FOG: ¡Se recibió una alerta de temperatura!")
