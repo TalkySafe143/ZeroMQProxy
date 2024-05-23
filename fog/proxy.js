@@ -55,26 +55,24 @@ const recibeMessage = async (connection, sensorName) => {
                     release();
                 }
 
+                const release = await mutex.acquire()
+
+                let sendToCloud = {
+                    type: sensorName,
+                    data: {
+                        average: null,
+                        timestamp: Date.now()
+                    }
+                };
                 
-                if (fogResend && fogResend.data != -1) {
-                    const release = await mutex.acquire()
+                if (!fogResend) sendToCloud.data.average = data;
+                else sendToCloud.data.average = fogResend.data;
 
-                    let sendToCloud = {
-                        type: sensorName,
-                        data: {
-                            average: null,
-                            timestamp: Date.now()
-                        }
-                    };
-                    
-                    if (!fogResend) sendToCloud.data.average = data;
-                    else sendToCloud.data.average = fogResend.data;
-
-                    await cloudSocket.send(JSON.stringify(sendToCloud));
-                    const [cloudReply] = await cloudSocket.receive();
-                    console.log("Respuesta de la capa Cloud:", cloudReply.toString());
-                    release()
-                }
+                await cloudSocket.send(JSON.stringify(sendToCloud));
+                const [cloudReply] = await cloudSocket.receive();
+                console.log("Respuesta de la capa Cloud:", cloudReply.toString());
+                release();
+                
             } else {
                 console.log(`Datos no validos de ${sensorName} recibidos a las ${timestamp}: ${data}`);
             }
