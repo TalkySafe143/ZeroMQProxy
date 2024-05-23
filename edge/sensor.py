@@ -9,6 +9,11 @@ import threading
 import time
 import random
 
+from prometheus_client import Summary, Counter, start_http_server
+
+request_time = Summary("sensors_summary", "Sensors summary")
+request_count = Counter("sensors_counter", "Sensors counter")
+
 dotenv.load_dotenv()
 
 def generate_response(content, name):
@@ -95,16 +100,22 @@ class Sensor:
                                                            [self.out_of_range_probability for _ in range(0, 7, 1)] +
                                                            [self.out_of_range_probability for _ in range(11, 15, 1)] +
                                                            [self.wrong_probability for _ in range(-10, 0, 1)])
-
     def start(self, mutex):
-
         while True:
             time.sleep(self.timesToSleep[self.type])
             metric = \
                 random.choices(self.sensorValues[self.type]['values'], self.sensorValues[self.type]['probability'])[0]
             
+
+            # Capturar el tiempo de inicio de la petición
+            # start_time = time.time()
             # Generar y Enviar a Fog computing
             self.fogLayer.send_json(generate_response(metric, self.type))
+
+            #Capturar el fin del envío
+            # end_time = time.time()
+            #request_count.inc()
+            #request_time.observe(end_time - start_time)
             print("Paquetes envíados a Fog Layer")
 
             if self.type == "smoke" and isinstance(metric, bool):
@@ -132,6 +143,7 @@ if len(sys.argv) != 3 or sys.argv[1] not in ["smoke", "temperature", "humidity"]
 
 sensor = Sensor(sys.argv[1], sys.argv[2])
 # Hacer las 10 instancias de los sensores
+# start_http_server(int(sensor.zero_mq_ports[sensor.type])-3) # Iniciar el servidor
 for _ in range(10):
     x = threading.Thread(target=sensor.start, args=(lock,))
     x.start()

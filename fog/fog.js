@@ -48,45 +48,47 @@ const sendAlert = async (alertMessage, timestamp) => {
     console.log(`Fog vinculado al puerto ${config.fogLayer.port}`);
 
     // Manejar mensajes entrantes del proxy
-    for await (const [msg] of sock) {
-        try {
-            const message = JSON.parse(msg.toString());
-            const { sensorType, data, timestamp } = message;
-
-            if (sensorType === "Humidity") {
-                humidityData.push({ value: data, timestamp });
-            } else {
-                temperatureData.push({ data, timestamp });
-            }
-
-            const humidityAverage = calculateHumidity();
-            const temperatureAverage = calculateTemperature();
-            
-            if (temperatureAverage.average < 11 || temperatureAverage.average > 29.4) {
-                console.log(`Temperatura fuera del rango: ${temperatureAverage.average}`);
-                await sendAlert(`Temperatura fuera del rango: ${temperatureAverage.average}`, timestamp);
-            }
-
-            if (sensorType == "Humidity") {
+    while (1) {
+        for await (const [msg] of sock) {
+            try {
+                const message = JSON.parse(msg.toString());
+                const { sensorType, data, timestamp } = message;
+    
+                if (sensorType === "Humidity") {
+                    humidityData.push({ value: data, timestamp });
+                } else {
+                    temperatureData.push({ data, timestamp });
+                }
+    
+                const humidityAverage = calculateHumidity();
+                const temperatureAverage = calculateTemperature();
+                
+                if (temperatureAverage.average < 11 || temperatureAverage.average > 29.4) {
+                    console.log(`Temperatura fuera del rango: ${temperatureAverage.average}`);
+                    await sendAlert(`Temperatura fuera del rango: ${temperatureAverage.average}`, timestamp);
+                }
+    
+                if (sensorType == "Humidity") {
+                    await sock.send(JSON.stringify({
+                        sensorType,
+                        data: humidityAverage.average,
+                        timestamp: Date.now()
+                    }));
+                } else {
+                    await sock.send(JSON.stringify({
+                        sensorType,
+                        data: temperatureAverage.average,
+                        timestamp: Date.now()
+                    }));
+                }
+            } catch (error) {
+                console.error("Error procesando el mensaje en fog:", error);
                 await sock.send(JSON.stringify({
-                    sensorType,
-                    data: humidityAverage.average,
+                    sensorType: "Error",
+                    data: -1,
                     timestamp: Date.now()
                 }));
-            } else {
-                await sock.send(JSON.stringify({
-                    sensorType,
-                    data: temperatureAverage.average,
-                    timestamp: Date.now()
-                }));
             }
-        } catch (error) {
-            console.error("Error procesando el mensaje en fog:", error);
-            await sock.send(JSON.stringify({
-                sensorType,
-                data: -1,
-                timestamp: Date.now()
-            }));
         }
     }
 })();

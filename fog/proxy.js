@@ -38,7 +38,6 @@ const recibeMessage = async (connection, sensorName) => {
             const { content, timestamp } = message;
             const data = content;
             if (validateSensorData(sensorName, data)) {
-                //console.log(`Datos válidos de ${sensorName} recibidos a las ${timestamp}: ${data}`);
                 
                 // Enviar datos a la capa Fog
                 let fogResend = null;
@@ -76,16 +75,11 @@ const recibeMessage = async (connection, sensorName) => {
                     console.log("Respuesta de la capa Cloud:", cloudReply.toString());
                     release()
                 }
-
-                // Ok to sensor
-                //await connection.send(JSON.stringify({ status: "ok", data: message }));
             } else {
-                console.log(`Datos inválidos de ${sensorName} recibidos a las ${timestamp}: ${data}`);
-                //await connection.send(JSON.stringify({ status: "error", error: "Datos inválidos" }));
+                console.log(`Datos no validos de ${sensorName} recibidos a las ${timestamp}: ${data}`);
             }
         } catch (error) {
             console.error("Error procesando el mensaje:", error);
-            //await connection.send(JSON.stringify({ status: "error", error: "Error procesando el mensaje" }));
         }
     }
 };
