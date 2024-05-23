@@ -84,6 +84,12 @@ const recibeMessage = async (connection, sensorName) => {
     }
 };
 
+const healthCheck = async (connection) => {
+    for await (const [msg] of connection) {
+        await connection.send("ok");
+    }
+}
+
 (async function () {
     // Configurar conexiones con los sensores
     const smokeSensorConnection = new zmq.Pull;
@@ -100,4 +106,10 @@ const recibeMessage = async (connection, sensorName) => {
     humiditySensorConnection.connect(`tcp://${config.humiditySensor.ip}:${config.humiditySensor.port}`);
     console.log("Proxy conectado al puerto " + config.humiditySensor.port);
     recibeMessage(humiditySensorConnection, 'Humidity');
+
+
+    const healthConnection = new zmq.Reply;
+    await healthConnection.bind(`tcp://*:${config.proxy.port}`);
+    console.log("Conectado al health checker")
+    healthCheck(healthConnection);
 })();

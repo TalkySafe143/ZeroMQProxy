@@ -12,6 +12,7 @@
   "dependencies": {
     "async-mutex": "^0.5.0",
     "dotenv": "^16.4.5",
+    "ip": "^2.0.1",
     "zeromq": "^6.0.0-beta.19"
   }
 }

@@ -27,5 +27,10 @@ module.exports = {
     },
     proxy: {
         ip: process.env.PROXY_IP,
+        port: process.env.PROXY_PORT
+    },
+    health: {
+        ip: process.env.HEALTH_IP,
+        port: process.env.HEALTH_PORT
     }
 };
