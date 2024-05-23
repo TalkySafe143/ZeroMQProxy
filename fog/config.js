@@ -20,5 +20,12 @@ module.exports = {
     cloudLayer: {
         ip: process.env.CLOUD_IP,
         port: process.env.CLOUD_PORT
+    },
+    alertSystem: {
+        ip: process.env.SCFog_IP,
+        port: process.env.SCFog_PORT
+    },
+    proxy: {
+        ip: process.env.PROXY_IP,
     }
 };

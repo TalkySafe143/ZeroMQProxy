@@ -25,7 +25,7 @@ void MessageToQualitySystem(double value) {
     context_t ctx;
     socket_t quality(ctx, socket_type::req);
     string address = "tcp://";
-    address += getenv("SCCLOUD_IP"); address += ":5559";
+    address += getenv("SCCLOUD_IP"); address += ":5561";
     quality.connect(address);
 
     time_t now = time(0);
