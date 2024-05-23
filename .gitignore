@@ -3,3 +3,7 @@ venv/
 .env
 __pycache__
 node_modules/
+cmake-build-debug/
+build/
+cmake-build-default/
+storage.txt

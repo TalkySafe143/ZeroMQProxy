@@ -13,7 +13,7 @@ def generate_response(content):
 context = zmq.Context()
 
 qualitySystem = context.socket(zmq.REP)
-qualitySystem.bind("tcp://*:5558")
+qualitySystem.bind("tcp://*:5559")
 
 while True:
     alert = qualitySystem.recv()
